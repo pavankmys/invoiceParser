@@ -9,7 +9,7 @@ from invoice_parser.config import get_gemini_api_key
 from invoice_parser.core.exceptions import ExtractionError, ValidationError
 from invoice_parser.core.image_preprocessor import enhance_image, image_to_bytes, load_image
 from invoice_parser.extractors import Extractor, GeminiFlashExtractor
-from invoice_parser.schema.models import GSTInvoice
+from invoice_parser.schema.models import GSTInvoice, Totals
 from invoice_parser.validators import validate_tax_math, validate_totals, validate_gstin
 
 
@@ -56,16 +56,60 @@ class InvoiceParser:
     def extractor(self) -> Extractor:
         return self._extractor
 
+    @staticmethod
+    def _compute_totals(invoice: GSTInvoice) -> list[str]:
+        warnings: list[str] = []
+        if not invoice.line_items:
+            return warnings
+        taxable_amount = Decimal("0")
+        cgst_total = Decimal("0")
+        sgst_total = Decimal("0")
+        igst_total = Decimal("0")
+        for item in invoice.line_items:
+            if item.taxable_value is not None:
+                taxable_amount += item.taxable_value
+            if item.cgst_amount is not None:
+                cgst_total += item.cgst_amount
+            if item.sgst_amount is not None:
+                sgst_total += item.sgst_amount
+            if item.igst_amount is not None:
+                igst_total += item.igst_amount
+        total_tax = cgst_total + sgst_total + igst_total
+        round_off = invoice.totals.round_off if invoice.totals else None
+        grand_total = taxable_amount + total_tax + (round_off or Decimal("0"))
+        old = invoice.totals
+        if old and old.grand_total is not None:
+            diff = abs(grand_total - old.grand_total)
+            if diff > Decimal("1.00"):
+                warnings.append(
+                    f"Computed grand total ({grand_total}) differs from "
+                    f"invoice total ({old.grand_total}) by ₹{diff}. "
+                    f"The model may have misread some line items."
+                )
+        invoice.totals = Totals(
+            taxable_amount=taxable_amount,
+            cgst_total=cgst_total if cgst_total else None,
+            sgst_total=sgst_total if sgst_total else None,
+            igst_total=igst_total if igst_total else None,
+            total_tax=total_tax,
+            grand_total=grand_total,
+            round_off=round_off,
+        )
+        return warnings
+
     def _process(self, image: Image.Image) -> GSTInvoice:
         start = time.monotonic()
         image = enhance_image(image)
         invoice = self._extractor.analyze(image)
         invoice.meta.processing_time_ms = int((time.monotonic() - start) * 1000)
+        total_warnings = self._compute_totals(invoice)
         if self.validate_output:
             errors = self._run_validation(invoice)
-            invoice.errors = errors
+            invoice.errors = total_warnings + errors
             if errors and self.max_retries > 0:
                 invoice = self._auto_correct(image, invoice, errors)
+        else:
+            invoice.errors = total_warnings
         return invoice
 
     async def _process_async(self, image: Image.Image) -> GSTInvoice:
@@ -73,30 +117,43 @@ class InvoiceParser:
         image = enhance_image(image)
         invoice = await self._extractor.analyze_async(image)
         invoice.meta.processing_time_ms = int((time.monotonic() - start) * 1000)
+        total_warnings = self._compute_totals(invoice)
         if self.validate_output:
             errors = self._run_validation(invoice)
-            invoice.errors = errors
+            invoice.errors = total_warnings + errors
             if errors and self.max_retries > 0:
                 invoice = await self._auto_correct_async(image, invoice, errors)
+        else:
+            invoice.errors = total_warnings
         return invoice
 
     def _auto_correct(self, image: Image.Image, invoice: GSTInvoice, errors: list[str]) -> GSTInvoice:
         previous_json = invoice.model_dump_json(indent=2, exclude_none=True)
-        corrected = self._extractor.analyze_with_reprompt(image, previous_json, errors)
-        corrected.meta.processing_time_ms = invoice.meta.processing_time_ms
-        corrected.meta.confidence = invoice.meta.confidence
-        new_errors = self._run_validation(corrected)
-        corrected.errors = new_errors
-        return corrected
+        try:
+            corrected = self._extractor.analyze_with_reprompt(image, previous_json, errors)
+            corrected.meta.processing_time_ms = invoice.meta.processing_time_ms
+            corrected.meta.confidence = invoice.meta.confidence
+            total_warnings = self._compute_totals(corrected)
+            new_errors = self._run_validation(corrected)
+            corrected.errors = total_warnings + new_errors
+            return corrected
+        except Exception:
+            invoice.errors = errors
+            return invoice
 
     async def _auto_correct_async(self, image: Image.Image, invoice: GSTInvoice, errors: list[str]) -> GSTInvoice:
         previous_json = invoice.model_dump_json(indent=2, exclude_none=True)
-        corrected = await self._extractor.analyze_with_reprompt_async(image, previous_json, errors)
-        corrected.meta.processing_time_ms = invoice.meta.processing_time_ms
-        corrected.meta.confidence = invoice.meta.confidence
-        new_errors = self._run_validation(corrected)
-        corrected.errors = new_errors
-        return corrected
+        try:
+            corrected = await self._extractor.analyze_with_reprompt_async(image, previous_json, errors)
+            corrected.meta.processing_time_ms = invoice.meta.processing_time_ms
+            corrected.meta.confidence = invoice.meta.confidence
+            total_warnings = self._compute_totals(corrected)
+            new_errors = self._run_validation(corrected)
+            corrected.errors = total_warnings + new_errors
+            return corrected
+        except Exception:
+            invoice.errors = errors
+            return invoice
 
     def _run_validation(self, invoice: GSTInvoice) -> list[str]:
         all_errors: list[str] = []
