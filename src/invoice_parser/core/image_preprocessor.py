@@ -36,9 +36,18 @@ def _convert_pdf_first_page(pdf_path: str, dpi: int = 200) -> Image.Image:
         )
 
 
+MAX_IMAGE_PX = 1024
+
+
 def enhance_image(image: Image.Image) -> Image.Image:
     if image.mode != "RGB":
         image = image.convert("RGB")
+    w, h = image.size
+    if max(w, h) > MAX_IMAGE_PX:
+        scale = MAX_IMAGE_PX / max(w, h)
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        image = image.resize((new_w, new_h), Image.LANCZOS)
     return image
 
 
