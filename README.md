@@ -1,6 +1,6 @@
 # invoice-parser
 
-Indian GST invoice parser — extracted structured data from invoices using Gemini Flash 2.0 vision.
+Indian GST invoice parser — extract structured data from invoices using Gemini Flash 2.0 vision.
 
 ```python
 from invoice_parser import InvoiceParser

@@ -40,8 +40,8 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pavan/invoice-parser"
-Repository = "https://github.com/pavan/invoice-parser"
+Homepage = "https://github.com/pavankmys/invoice-parser"
+Repository = "https://github.com/pavankmys/invoice-parser"
 
 [tool.setuptools.packages.find]
 where = ["src"]
