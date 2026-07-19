@@ -25,7 +25,7 @@ class InvoiceParser:
         location: str = "us-central1",
         tax_tolerance: float = 0.50,
         total_tolerance: float = 0.50,
-        max_retries: int = 1,
+        max_retries: int = 0,
     ):
         self.validate_output = validate
         self.raise_on_error = raise_on_error
