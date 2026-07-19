@@ -57,7 +57,7 @@ class GeminiFlashExtractor(Extractor):
     def __init__(
         self,
         api_key: str | None = None,
-        model_name: str = "gemini-2.0-flash",
+        model_name: str = "gemini-flash-latest",
         vertexai: bool = False,
         project: str | None = None,
         location: str = "us-central1",
