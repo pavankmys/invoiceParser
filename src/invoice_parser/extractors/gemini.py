@@ -54,9 +54,19 @@ Rules:
 
 
 class GeminiFlashExtractor(Extractor):
-    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model_name: str = "gemini-2.0-flash",
+        vertexai: bool = False,
+        project: str | None = None,
+        location: str = "us-central1",
+    ):
         self.api_key = api_key
         self.model_name = model_name
+        self.vertexai = vertexai
+        self.project = project
+        self.location = location
         self._client = None
 
     def _get_client(self):
@@ -68,7 +78,19 @@ class GeminiFlashExtractor(Extractor):
             raise ConfigurationError(
                 "google-genai is required. Install with: pip install invoice-parser[gemini]"
             )
-        self._client = genai.Client(api_key=self.api_key)
+        if self.vertexai:
+            self._client = genai.Client(
+                vertexai=True,
+                project=self.project,
+                location=self.location,
+            )
+        else:
+            if not self.api_key:
+                raise ConfigurationError(
+                    "Gemini API key required. Set GEMINI_API_KEY env var "
+                    "or use vertexai=True with a service account."
+                )
+            self._client = genai.Client(api_key=self.api_key)
         return self._client
 
     def _parse_response(self, text: str, elapsed: int) -> GSTInvoice:

@@ -19,15 +19,30 @@ class InvoiceParser:
         extractor: str = "gemini",
         validate: bool = True,
         raise_on_error: bool = False,
+        vertexai: bool = False,
+        project: Optional[str] = None,
+        location: str = "us-central1",
     ):
         self.validate_output = validate
         self.raise_on_error = raise_on_error
-        self._extractor = self._build_extractor(extractor, api_key)
+        self._extractor = self._build_extractor(extractor, api_key, vertexai, project, location)
 
-    def _build_extractor(self, name: str, api_key: Optional[str]) -> Extractor:
+    def _build_extractor(
+        self,
+        name: str,
+        api_key: Optional[str],
+        vertexai: bool = False,
+        project: Optional[str] = None,
+        location: str = "us-central1",
+    ) -> Extractor:
         if name == "gemini":
             key = api_key or get_gemini_api_key()
-            return GeminiFlashExtractor(api_key=key)
+            return GeminiFlashExtractor(
+                api_key=key,
+                vertexai=vertexai,
+                project=project,
+                location=location,
+            )
         raise ValueError(f"Unknown extractor: {name}. Supported: gemini")
 
     @property
@@ -91,10 +106,16 @@ def parse_invoice(
     api_key: Optional[str] = None,
     validate: bool = True,
     raise_on_error: bool = False,
+    vertexai: bool = False,
+    project: Optional[str] = None,
+    location: str = "us-central1",
 ) -> GSTInvoice:
     parser = InvoiceParser(
         api_key=api_key,
         validate=validate,
         raise_on_error=raise_on_error,
+        vertexai=vertexai,
+        project=project,
+        location=location,
     )
     return parser.parse(source)
