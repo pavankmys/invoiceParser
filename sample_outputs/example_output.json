@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "source_type": "image",
+    "page_count": 1,
+    "processing_time_ms": 2340,
+    "confidence": 0.94
+  },
+  "invoice_number": "INV-2024-00123",
+  "invoice_date": "2024-06-15",
+  "due_date": "2024-07-15",
+  "place_of_supply": "Maharashtra (27)",
+  "supply_type": "B2B",
+  "seller": {
+    "name": "Acme Corp Pvt Ltd",
+    "gstin": "27AABCU9603R1ZM",
+    "address": "123, Business Hub, Andheri East, Mumbai - 400093",
+    "pan": "AABCU9603R"
+  },
+  "buyer": {
+    "name": "TechBuyer India Pvt Ltd",
+    "gstin": "29AABCB1234E1ZP",
+    "address": "456, Tech Park, Whitefield, Bangalore - 560066",
+    "state_code": "29"
+  },
+  "line_items": [
+    {
+      "description": "Industrial Sensor Module XR-200",
+      "hsn_code": "90258040",
+      "quantity": 25,
+      "unit": "Nos",
+      "rate": 3400.00,
+      "taxable_value": 85000.00,
+      "gst_rate": 18,
+      "cgst_amount": 7650.00,
+      "sgst_amount": 7650.00,
+      "igst_amount": null,
+      "total": 100300.00
+    },
+    {
+      "description": "Mounting Bracket Kit",
+      "hsn_code": "73269099",
+      "quantity": 25,
+      "unit": "Nos",
+      "rate": 450.00,
+      "taxable_value": 11250.00,
+      "gst_rate": 18,
+      "cgst_amount": 1012.50,
+      "sgst_amount": 1012.50,
+      "igst_amount": null,
+      "total": 13275.00
+    }
+  ],
+  "totals": {
+    "taxable_amount": 96250.00,
+    "cgst_total": 8662.50,
+    "sgst_total": 8662.50,
+    "igst_total": null,
+    "total_tax": 17325.00,
+    "grand_total": 113575.00,
+    "round_off": null
+  },
+  "errors": []
+}

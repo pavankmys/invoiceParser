@@ -1,0 +1,100 @@
+import time
+from pathlib import Path
+from typing import Optional
+
+from PIL import Image
+
+from invoice_parser.config import get_gemini_api_key
+from invoice_parser.core.exceptions import ExtractionError, ValidationError
+from invoice_parser.core.image_preprocessor import enhance_image, image_to_bytes, load_image
+from invoice_parser.extractors import Extractor, GeminiFlashExtractor
+from invoice_parser.schema.models import GSTInvoice
+from invoice_parser.validators import validate_tax_math, validate_totals, validate_gstin
+
+
+class InvoiceParser:
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        extractor: str = "gemini",
+        validate: bool = True,
+        raise_on_error: bool = False,
+    ):
+        self.validate_output = validate
+        self.raise_on_error = raise_on_error
+        self._extractor = self._build_extractor(extractor, api_key)
+
+    def _build_extractor(self, name: str, api_key: Optional[str]) -> Extractor:
+        if name == "gemini":
+            key = api_key or get_gemini_api_key()
+            return GeminiFlashExtractor(api_key=key)
+        raise ValueError(f"Unknown extractor: {name}. Supported: gemini")
+
+    @property
+    def extractor(self) -> Extractor:
+        return self._extractor
+
+    def _process(self, image: Image.Image) -> GSTInvoice:
+        start = time.monotonic()
+        image = enhance_image(image)
+        invoice = self._extractor.analyze(image)
+        invoice.meta.processing_time_ms = int((time.monotonic() - start) * 1000)
+        if self.validate_output:
+            self._run_validation(invoice)
+        return invoice
+
+    async def _process_async(self, image: Image.Image) -> GSTInvoice:
+        start = time.monotonic()
+        image = enhance_image(image)
+        invoice = await self._extractor.analyze_async(image)
+        invoice.meta.processing_time_ms = int((time.monotonic() - start) * 1000)
+        if self.validate_output:
+            self._run_validation(invoice)
+        return invoice
+
+    def _run_validation(self, invoice: GSTInvoice) -> None:
+        all_errors: list[str] = []
+        if invoice.seller and invoice.seller.gstin:
+            valid, msg = validate_gstin(invoice.seller.gstin)
+            if not valid:
+                all_errors.append(f"Seller GSTIN: {msg}")
+        if invoice.buyer and invoice.buyer.gstin:
+            valid, msg = validate_gstin(invoice.buyer.gstin)
+            if not valid:
+                all_errors.append(f"Buyer GSTIN: {msg}")
+        for i, item in enumerate(invoice.line_items):
+            for err in validate_tax_math(item):
+                all_errors.append(f"Line {i + 1}: {err}")
+        for err in validate_totals(invoice):
+            all_errors.append(err)
+        invoice.errors = all_errors
+        if all_errors and self.raise_on_error:
+            raise ValidationError("Invoice validation failed", field_errors=all_errors)
+
+    def parse(self, source: str | Path | bytes | Image.Image) -> GSTInvoice:
+        image = load_image(source)
+        return self._process(image)
+
+    async def aparse(self, source: str | Path | bytes | Image.Image) -> GSTInvoice:
+        image = load_image(source)
+        return await self._process_async(image)
+
+    def parse_bytes(self, data: bytes) -> GSTInvoice:
+        return self.parse(data)
+
+    def parse_file(self, path: str | Path) -> GSTInvoice:
+        return self.parse(path)
+
+
+def parse_invoice(
+    source: str | Path | bytes | Image.Image,
+    api_key: Optional[str] = None,
+    validate: bool = True,
+    raise_on_error: bool = False,
+) -> GSTInvoice:
+    parser = InvoiceParser(
+        api_key=api_key,
+        validate=validate,
+        raise_on_error=raise_on_error,
+    )
+    return parser.parse(source)

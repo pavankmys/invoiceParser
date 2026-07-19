@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "invoice-parser"
+version = "0.1.0"
+description = "Indian GST invoice parser powered by Gemini Flash 2.0 vision"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Pavan", email = "pavan@example.com"},
+]
+keywords = ["gst", "invoice", "india", "tax", "parser", "gemini"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+gemini = ["google-generativeai>=0.8.0"]
+pdf = ["pdf2image>=1.16"]
+azure = ["azure-ai-documentintelligence>=1.0.0"]
+all = [
+    "invoice-parser[gemini]",
+    "invoice-parser[pdf]",
+    "invoice-parser[azure]",
+]
+
+[project.urls]
+Homepage = "https://github.com/pavan/invoice-parser"
+Repository = "https://github.com/pavan/invoice-parser"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["invoice_parser*"]
+
+[tool.setuptools.package-data]
+"invoice_parser" = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

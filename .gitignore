@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PDF test fixtures (large)
+tests/fixtures/*.pdf
+tests/fixtures/*.jpg
+tests/fixtures/*.png
+
+# API keys (keep safe)
+**/credentials.json
+**/service-account.json
