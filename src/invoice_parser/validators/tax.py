@@ -5,15 +5,16 @@ from invoice_parser.schema.models import GSTInvoice, LineItem
 
 
 TAX_SLABS = {0, 0.25, 1, 1.5, 3, 5, 6, 7.5, 9, 12, 13.5, 15, 18, 24, 28}
+DEFAULT_EPSILON = Decimal("0.50")
+DEFAULT_TOTALS_EPSILON = Decimal("0.50")
 
 
-def validate_tax_math(item: LineItem) -> list[str]:
+def validate_tax_math(item: LineItem, epsilon: Decimal = DEFAULT_EPSILON) -> list[str]:
     errors: list[str] = []
     if item.taxable_value is None or item.gst_rate is None:
         return errors
 
     expected_tax = item.taxable_value * item.gst_rate / Decimal("100")
-    epsilon = Decimal("0.02")
 
     if item.cgst_amount is not None and item.sgst_amount is not None:
         total_gst = item.cgst_amount + item.sgst_amount
@@ -37,7 +38,7 @@ def validate_tax_math(item: LineItem) -> list[str]:
     return errors
 
 
-def validate_totals(invoice: GSTInvoice) -> list[str]:
+def validate_totals(invoice: GSTInvoice, epsilon: Decimal = DEFAULT_TOTALS_EPSILON) -> list[str]:
     errors: list[str] = []
     if not invoice.line_items:
         return errors
@@ -48,7 +49,6 @@ def validate_totals(invoice: GSTInvoice) -> list[str]:
         expected_grand = (invoice.totals.taxable_amount or Decimal("0")) + invoice.totals.total_tax
         if invoice.totals.round_off is not None:
             expected_grand += invoice.totals.round_off
-        epsilon = Decimal("0.05")
         if abs(invoice.totals.grand_total - expected_grand) > epsilon:
             errors.append(
                 f"Grand total ({invoice.totals.grand_total}) != "

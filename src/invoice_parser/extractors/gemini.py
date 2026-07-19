@@ -57,7 +57,7 @@ class GeminiFlashExtractor(Extractor):
     def __init__(
         self,
         api_key: str | None = None,
-        model_name: str = "gemini-flash-latest",
+        model_name: str = "gemini-3.1-flash-lite",
         vertexai: bool = False,
         project: str | None = None,
         location: str = "us-central1",
@@ -132,7 +132,15 @@ class GeminiFlashExtractor(Extractor):
             totals=Totals(**totals_data) if totals_data else None,
         )
 
-    def analyze(self, image: Image.Image) -> GSTInvoice:
+    REPROMPT_TEMPLATE = """The previous extraction has these validation issues:
+{errors}
+
+Here is the previously extracted JSON — fix ONLY the fields that are wrong:
+{previous_json}
+
+Return the corrected JSON in the same structure. Keep all correct values unchanged."""
+
+    def analyze(self, image: Image.Image, retries: int = 1) -> GSTInvoice:
         client = self._get_client()
         start = time.monotonic()
         try:
@@ -146,14 +154,59 @@ class GeminiFlashExtractor(Extractor):
             elapsed = int((time.monotonic() - start) * 1000)
             raise ExtractionError(f"Gemini API call failed after {elapsed}ms", cause=e)
 
+    def analyze_with_reprompt(
+        self,
+        image: Image.Image,
+        previous_json: str,
+        errors: list[str],
+    ) -> GSTInvoice:
+        client = self._get_client()
+        prompt = self.REPROMPT_TEMPLATE.format(
+            errors="\n".join(errors),
+            previous_json=previous_json,
+        )
+        start = time.monotonic()
+        try:
+            response = client.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, image],
+            )
+            elapsed = int((time.monotonic() - start) * 1000)
+            return self._parse_response(response.text, elapsed)
+        except Exception as e:
+            elapsed = int((time.monotonic() - start) * 1000)
+            raise ExtractionError(f"Gemini API call failed after {elapsed}ms", cause=e)
+
     async def analyze_async(self, image: Image.Image) -> GSTInvoice:
         client = self._get_client()
         start = time.monotonic()
         try:
-            from google.genai import types
             response = await client.aio.models.generate_content(
                 model=self.model_name,
                 contents=[PROMPT, image],
+            )
+            elapsed = int((time.monotonic() - start) * 1000)
+            return self._parse_response(response.text, elapsed)
+        except Exception as e:
+            elapsed = int((time.monotonic() - start) * 1000)
+            raise ExtractionError(f"Gemini API call failed after {elapsed}ms", cause=e)
+
+    async def analyze_with_reprompt_async(
+        self,
+        image: Image.Image,
+        previous_json: str,
+        errors: list[str],
+    ) -> GSTInvoice:
+        client = self._get_client()
+        prompt = self.REPROMPT_TEMPLATE.format(
+            errors="\n".join(errors),
+            previous_json=previous_json,
+        )
+        start = time.monotonic()
+        try:
+            response = await client.aio.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, image],
             )
             elapsed = int((time.monotonic() - start) * 1000)
             return self._parse_response(response.text, elapsed)
