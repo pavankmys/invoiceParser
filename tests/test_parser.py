@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,8 +12,18 @@ from invoice_parser.schema.models import GSTInvoice, MetaData, Seller, Buyer
 
 class TestInvoiceParser:
     def test_requires_api_key(self):
+        saved_key = os.environ.pop("GEMINI_API_KEY", None)
+        env_path = Path(".env")
+        saved_env = None
+        if env_path.exists():
+            saved_env = ".env.bak"
+            env_path.rename(saved_env)
         with pytest.raises(ConfigurationError):
             InvoiceParser(extractor="gemini")
+        if saved_key:
+            os.environ["GEMINI_API_KEY"] = saved_key
+        if saved_env:
+            Path(saved_env).rename(".env")
 
     def test_unknown_extractor(self):
         with pytest.raises(ValueError, match="Unknown extractor"):
