@@ -57,20 +57,19 @@ class GeminiFlashExtractor(Extractor):
     def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
         self.api_key = api_key
         self.model_name = model_name
-        self._model = None
+        self._client = None
 
-    def _get_model(self):
-        if self._model is not None:
-            return self._model
+    def _get_client(self):
+        if self._client is not None:
+            return self._client
         try:
-            import google.generativeai as genai
+            from google import genai
         except ImportError:
             raise ConfigurationError(
-                "google-generativeai is required. Install with: pip install invoice-parser[gemini]"
+                "google-genai is required. Install with: pip install invoice-parser[gemini]"
             )
-        genai.configure(api_key=self.api_key)
-        self._model = genai.GenerativeModel(self.model_name)
-        return self._model
+        self._client = genai.Client(api_key=self.api_key)
+        return self._client
 
     def _parse_response(self, text: str, elapsed: int) -> GSTInvoice:
         cleaned = text.strip()
@@ -112,10 +111,13 @@ class GeminiFlashExtractor(Extractor):
         )
 
     def analyze(self, image: Image.Image) -> GSTInvoice:
-        model = self._get_model()
+        client = self._get_client()
         start = time.monotonic()
         try:
-            response = model.generate_content([PROMPT, image])
+            response = client.models.generate_content(
+                model=self.model_name,
+                contents=[PROMPT, image],
+            )
             elapsed = int((time.monotonic() - start) * 1000)
             return self._parse_response(response.text, elapsed)
         except Exception as e:
@@ -123,10 +125,14 @@ class GeminiFlashExtractor(Extractor):
             raise ExtractionError(f"Gemini API call failed after {elapsed}ms", cause=e)
 
     async def analyze_async(self, image: Image.Image) -> GSTInvoice:
-        model = self._get_model()
+        client = self._get_client()
         start = time.monotonic()
         try:
-            response = await model.generate_content_async([PROMPT, image])
+            from google.genai import types
+            response = await client.aio.models.generate_content(
+                model=self.model_name,
+                contents=[PROMPT, image],
+            )
             elapsed = int((time.monotonic() - start) * 1000)
             return self._parse_response(response.text, elapsed)
         except Exception as e:

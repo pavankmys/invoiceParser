@@ -17,14 +17,14 @@ class TestInvoiceParser:
         with pytest.raises(ValueError, match="Unknown extractor"):
             InvoiceParser(api_key="test", extractor="unknown")
 
-    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_model")
-    def test_parse_image(self, mock_get_model, sample_invoice_json):
-        mock_model = MagicMock()
+    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_client")
+    def test_parse_image(self, mock_get_client, sample_invoice_json):
+        mock_client = MagicMock()
         mock_response = MagicMock()
         import json
         mock_response.text = json.dumps(sample_invoice_json)
-        mock_model.generate_content.return_value = mock_response
-        mock_get_model.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
 
         parser = InvoiceParser(api_key="test-key", validate=False)
         img = Image.new("RGB", (100, 100))
@@ -35,22 +35,22 @@ class TestInvoiceParser:
         assert result.seller.name == "Acme Corp"
         assert len(result.line_items) == 1
 
-    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_model")
-    def test_parse_file_not_found(self, mock_get_model):
+    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_client")
+    def test_parse_file_not_found(self, mock_get_client):
         parser = InvoiceParser(api_key="test-key", validate=False)
         with pytest.raises(FileNotFoundError):
             parser.parse("/nonexistent/file.jpg")
 
-    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_model")
-    def test_parse_bytes(self, mock_get_model, sample_invoice_json):
-        mock_model = MagicMock()
+    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_client")
+    def test_parse_bytes(self, mock_get_client, sample_invoice_json):
+        mock_client = MagicMock()
         mock_response = MagicMock()
         import json
         import io
         from PIL import Image
         mock_response.text = json.dumps(sample_invoice_json)
-        mock_model.generate_content.return_value = mock_response
-        mock_get_model.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
 
         buf = io.BytesIO()
         Image.new("RGB", (100, 100)).save(buf, format="PNG")
@@ -61,15 +61,15 @@ class TestInvoiceParser:
 
         assert isinstance(result, GSTInvoice)
 
-    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_model")
-    def test_parse_with_validation(self, mock_get_model, sample_invoice_json):
-        mock_model = MagicMock()
+    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_client")
+    def test_parse_with_validation(self, mock_get_client, sample_invoice_json):
+        mock_client = MagicMock()
         mock_response = MagicMock()
         import json
         sample_invoice_json["seller"]["gstin"] = "BAD-GSTIN"
         mock_response.text = json.dumps(sample_invoice_json)
-        mock_model.generate_content.return_value = mock_response
-        mock_get_model.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
 
         parser = InvoiceParser(api_key="test-key", validate=True)
         img = Image.new("RGB", (100, 100))
@@ -77,15 +77,15 @@ class TestInvoiceParser:
 
         assert len(result.errors) >= 1
 
-    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_model")
-    def test_parse_with_validation_raises(self, mock_get_model, sample_invoice_json):
-        mock_model = MagicMock()
+    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_client")
+    def test_parse_with_validation_raises(self, mock_get_client, sample_invoice_json):
+        mock_client = MagicMock()
         mock_response = MagicMock()
         import json
         sample_invoice_json["seller"]["gstin"] = "BAD-GSTIN"
         mock_response.text = json.dumps(sample_invoice_json)
-        mock_model.generate_content.return_value = mock_response
-        mock_get_model.return_value = mock_model
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
 
         parser = InvoiceParser(api_key="test-key", validate=True, raise_on_error=True)
         img = Image.new("RGB", (100, 100))
@@ -93,11 +93,11 @@ class TestInvoiceParser:
         with pytest.raises(ValidationError):
             parser.parse(img)
 
-    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_model")
-    def test_api_failure(self, mock_get_model):
-        mock_model = MagicMock()
-        mock_model.generate_content.side_effect = RuntimeError("API down")
-        mock_get_model.return_value = mock_model
+    @patch("invoice_parser.extractors.gemini.GeminiFlashExtractor._get_client")
+    def test_api_failure(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_client.models.generate_content.side_effect = RuntimeError("API down")
+        mock_get_client.return_value = mock_client
 
         parser = InvoiceParser(api_key="test-key", validate=False)
         img = Image.new("RGB", (100, 100))
