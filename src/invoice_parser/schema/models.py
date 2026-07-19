@@ -11,10 +11,19 @@ class Seller(BaseModel):
     address: Optional[str] = None
     pan: Optional[str] = None
 
-    @field_validator("gstin")
+    @field_validator("gstin", "pan")
     @classmethod
-    def uppercase_gstin(cls, v: Optional[str]) -> Optional[str]:
-        return v.upper() if v else v
+    def coerce_and_upper(cls, v: Optional[str | int]) -> Optional[str]:
+        if v is not None:
+            return str(v).upper()
+        return v
+
+    @field_validator("address")
+    @classmethod
+    def coerce_str(cls, v: Optional[str | int]) -> Optional[str]:
+        if v is not None and not isinstance(v, str):
+            return str(v)
+        return v
 
 
 class Buyer(BaseModel):
@@ -22,6 +31,13 @@ class Buyer(BaseModel):
     gstin: Optional[str] = None
     address: Optional[str] = None
     state_code: Optional[str] = None
+
+    @field_validator("state_code")
+    @classmethod
+    def coerce_state_code(cls, v: Optional[str | int]) -> Optional[str]:
+        if v is not None:
+            return str(v)
+        return v
 
 
 class LineItem(BaseModel):
@@ -36,6 +52,13 @@ class LineItem(BaseModel):
     sgst_amount: Optional[Decimal] = None
     igst_amount: Optional[Decimal] = None
     total: Optional[Decimal] = None
+
+    @field_validator("hsn_code", "unit")
+    @classmethod
+    def coerce_str_fields(cls, v: Optional[str | int]) -> Optional[str]:
+        if v is not None:
+            return str(v)
+        return v
 
 
 class Totals(BaseModel):
